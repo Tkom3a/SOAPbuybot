@@ -4,7 +4,7 @@ Telegram bot for monitoring QUAI prices.
 
 ## Quick Install
 
-git clone https://github.com/Tkom3a/SOAPbuybot.git && cd cd SOAPbuybot && chmod +x install.sh && ./install.sh  
+git clone https://github.com/Tkom3a/SOAPbuybot.git && cd SOAPbuybot && chmod +x install.sh && ./install.sh  
 
 ## OR  
 
