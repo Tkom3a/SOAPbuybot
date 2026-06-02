@@ -25,6 +25,40 @@ detect_os() {
     fi
 }
 
+# Проверка доступа к Telegram API
+check_telegram_access() {
+    echo -e "${YELLOW}Checking Telegram API access...${NC}"
+    if curl -s -o /dev/null -w "%{http_code}" --max-time 5 https://api.telegram.org | grep -q "200"; then
+        echo -e "${GREEN}Telegram API accessible${NC}"
+        return 0
+    else
+        echo -e "${RED}Telegram API blocked (likely Russia)${NC}"
+        return 1
+    fi
+}
+
+# Автоматическая настройка прокси
+setup_proxy_auto() {
+    echo -e "${YELLOW}Auto-configuring proxy for Telegram...${NC}"
+    
+    # Проверяем, есть ли уже прокси в .env
+    if grep -q "HTTP_PROXY" .env 2>/dev/null; then
+        echo -e "${GREEN}Proxy already configured${NC}"
+        return
+    fi
+    
+    # Добавляем публичный прокси
+    cat >> .env <<'EOF'
+
+# Proxy for Telegram API (auto-configured for Russia)
+HTTP_PROXY=socks5://91.230.238.128:443
+HTTPS_PROXY=socks5://91.230.238.128:443
+NO_PROXY=localhost,127.0.0.1
+EOF
+    
+    echo -e "${GREEN}Proxy configured in .env${NC}"
+}
+
 # Установка Docker
 install_docker() {
     echo -e "${YELLOW}Installing Docker...${NC}"
@@ -167,17 +201,16 @@ start_container() {
             echo ""
             echo -e "${YELLOW}If you are in Russia or having connection problems:${NC}"
             echo ""
-            echo "1. Run the proxy setup script:"
+            echo "Proxy already configured. If still not working, try:"
+            echo ""
+            echo "1. Edit .env and change proxy server:"
+            echo "   nano .env"
+            echo "   # Change IP after socks5:// to another proxy"
+            echo ""
+            echo "2. Or install your own proxy:"
             echo "   ./proxy-setup.sh"
             echo ""
-            echo "2. Choose option 1 (Quick fix - use public proxy)"
-            echo ""
-            echo "3. After proxy is configured, restart the bot:"
-            echo "   docker compose restart"
-            echo ""
-            echo -e "${YELLOW}Or manually add proxy to .env:${NC}"
-            echo "   echo 'HTTP_PROXY=socks5://91.230.238.128:443' >> .env"
-            echo "   echo 'HTTPS_PROXY=socks5://91.230.238.128:443' >> .env"
+            echo "3. Restart bot after changes:"
             echo "   docker compose restart"
             echo ""
         else
@@ -202,6 +235,12 @@ main() {
     install_docker_compose
     get_config
     create_env
+    
+    # Автоматически настраиваем прокси если Telegram недоступен
+    if ! check_telegram_access; then
+        setup_proxy_auto
+    fi
+    
     start_container
 }
 
