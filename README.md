@@ -8,30 +8,30 @@ git clone https://github.com/Tkom3a/SOAPbuybot.git && cd cd SOAPbuybot && chmod 
 
 ## OR  
 
-git clone https://github.com/Tkom3a/SOAPbuybot.git  
-cd SOAPbuybot  
-chmod +x install.sh  
-./install.sh  
+git clone https://github.com/Tkom3a/SOAPbuybot.git    
+cd SOAPbuybot    
+chmod +x install.sh    
+./install.sh    
 
-## Commands
+## Commands  
 
-docker-compose logs -f      # View logs
-docker-compose down         # Stop bot
-docker-compose up -d        # Start bot
-docker-compose restart      # Restart bot
-docker-compose ps           # Check status
+docker-compose logs -f      # View logs  
+docker-compose down         # Stop bot  
+docker-compose up -d        # Start bot  
+docker-compose restart      # Restart bot  
+docker-compose ps           # Check status  
 
-## Configuration
+## Configuration  
 
-Edit .env file:
+Edit .env file:  
 
-TELEGRAM_BOT_TOKEN=your_token
-TELEGRAM_CHAT_ID=your_chat_id
-THRESHOLD_PERCENT=4.0
-LOOKBACK_MINUTES=5
+TELEGRAM_BOT_TOKEN=your_token  
+TELEGRAM_CHAT_ID=your_chat_id  
+THRESHOLD_PERCENT=4.0  
+LOOKBACK_MINUTES=5  
 
-## Uninstall
+## Uninstall  
 
-docker-compose down -v
-docker rmi soapbuy_soapbuy-bot
-cd .. && rm -rf soapbuy
+docker-compose down -v  
+docker rmi soapbuy_soapbuy-bot  
+cd .. && rm -rf soapbuy  
