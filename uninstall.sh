@@ -10,10 +10,10 @@ read -p "Are you sure? (y/n): " confirm
 
 if [[ $confirm =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Stopping container...${NC}"
-    docker-compose down
+    docker compose down -v 2>/dev/null || true
     
     echo -e "${YELLOW}Removing image...${NC}"
-    docker rmi soapbuy_soapbuy-bot 2>/dev/null
+    docker rmi soapbuy-bot 2>/dev/null || true
     
     echo -e "${YELLOW}Removing files...${NC}"
     cd ..

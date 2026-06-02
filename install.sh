@@ -9,113 +9,27 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}   SOAPbuy - Automatic Installer   ${NC}"
+echo -e "${BLUE}   SOAPbuy - Installer   ${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Определение ОС
-detect_os() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-        VER=$VERSION_ID
-    else
-        echo -e "${RED}Cannot detect OS${NC}"
+# Проверка Docker
+check_docker() {
+    echo -e "${YELLOW}Checking Docker...${NC}"
+    
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}Docker not installed${NC}"
+        echo -e "${YELLOW}Install Docker: https://docs.docker.com/engine/install/${NC}"
         exit 1
     fi
-}
-
-# Проверка доступа к Telegram API
-check_telegram_access() {
-    echo -e "${YELLOW}Checking Telegram API access...${NC}"
-    if curl -s -o /dev/null -w "%{http_code}" --max-time 5 https://api.telegram.org | grep -q "200"; then
-        echo -e "${GREEN}Telegram API accessible${NC}"
-        return 0
-    else
-        echo -e "${RED}Telegram API blocked (likely Russia)${NC}"
-        return 1
-    fi
-}
-
-# Автоматическая настройка прокси
-setup_proxy_auto() {
-    echo -e "${YELLOW}Auto-configuring proxy for Telegram...${NC}"
     
-    # Проверяем, есть ли уже прокси в .env
-    if grep -q "HTTP_PROXY" .env 2>/dev/null; then
-        echo -e "${GREEN}Proxy already configured${NC}"
-        return
+    if ! docker compose version &> /dev/null; then
+        echo -e "${RED}Docker Compose not installed${NC}"
+        echo -e "${YELLOW}Install Docker Compose: https://docs.docker.com/compose/install/${NC}"
+        exit 1
     fi
     
-    # Добавляем публичный прокси
-    cat >> .env <<'EOF'
-
-# Proxy for Telegram API (auto-configured for Russia)
-HTTP_PROXY=socks5://91.230.238.128:443
-HTTPS_PROXY=socks5://91.230.238.128:443
-NO_PROXY=localhost,127.0.0.1
-EOF
-    
-    echo -e "${GREEN}Proxy configured in .env${NC}"
-}
-
-# Установка Docker
-install_docker() {
-    echo -e "${YELLOW}Installing Docker...${NC}"
-
-    if command -v docker &> /dev/null; then
-        echo -e "${GREEN}Docker already installed${NC}"
-        return
-    fi
-
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh
-    rm get-docker.sh
-
-    echo -e "${GREEN}Docker installed${NC}"
-}
-
-# Установка Docker Compose V2
-install_docker_compose() {
-    echo -e "${YELLOW}Installing Docker Compose...${NC}"
-
-    if docker compose version &> /dev/null; then
-        echo -e "${GREEN}Docker Compose already installed${NC}"
-        return
-    fi
-
-    mkdir -p /usr/local/lib/docker/cli-plugins
-    curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
-    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-
-    echo -e "${GREEN}Docker Compose installed${NC}"
-}
-
-# Проверка и установка зависимостей
-check_dependencies() {
-    echo -e "${YELLOW}Checking dependencies...${NC}"
-
-    if command -v apt-get &> /dev/null; then
-        apt-get update -qq 2>/dev/null || true
-    fi
-
-    if ! command -v curl &> /dev/null; then
-        if command -v apt-get &> /dev/null; then
-            apt-get install -y curl
-        elif command -v yum &> /dev/null; then
-            yum install -y curl
-        fi
-    fi
-
-    if ! command -v git &> /dev/null; then
-        if command -v apt-get &> /dev/null; then
-            apt-get install -y git
-        elif command -v yum &> /dev/null; then
-            yum install -y git
-        fi
-    fi
-
-    echo -e "${GREEN}Dependencies OK${NC}"
+    echo -e "${GREEN}Docker OK${NC}"
 }
 
 # Запрос настроек
@@ -174,7 +88,7 @@ start_container() {
     docker compose down 2>/dev/null || true
     docker compose up -d --build
 
-    sleep 5
+    sleep 3
 
     if docker ps | grep -q soapbuy-bot; then
         echo ""
@@ -188,36 +102,7 @@ start_container() {
         echo -e "  ${GREEN}Restart:${NC} docker compose restart"
         echo -e "  ${GREEN}Status:${NC} docker ps"
         echo ""
-
-        # Проверка доступности Telegram API
-        echo -e "${YELLOW}Checking Telegram API connection...${NC}"
-        sleep 5
-        
-        # Проверяем логи на наличие ошибок подключения
-        if docker compose logs --tail=30 2>&1 | grep -qi "error\|failed\|timeout\|connection\|Cannot connect"; then
-            echo -e "${RED}========================================${NC}"
-            echo -e "${RED}  Telegram connection issue detected!  ${NC}"
-            echo -e "${RED}========================================${NC}"
-            echo ""
-            echo -e "${YELLOW}If you are in Russia or having connection problems:${NC}"
-            echo ""
-            echo "Proxy already configured. If still not working, try:"
-            echo ""
-            echo "1. Edit .env and change proxy server:"
-            echo "   nano .env"
-            echo "   # Change IP after socks5:// to another proxy"
-            echo ""
-            echo "2. Or install your own proxy:"
-            echo "   ./proxy-setup.sh"
-            echo ""
-            echo "3. Restart bot after changes:"
-            echo "   docker compose restart"
-            echo ""
-        else
-            echo -e "${GREEN}Telegram connection successful${NC}"
-            echo -e "${GREEN}Check your Telegram for welcome message${NC}"
-        fi
-
+        echo -e "${YELLOW}Check Telegram for welcome message${NC}"
         echo ""
         echo -e "${BLUE}========================================${NC}"
     else
@@ -229,18 +114,9 @@ start_container() {
 
 # Основной процесс
 main() {
-    detect_os
-    check_dependencies
-    install_docker
-    install_docker_compose
+    check_docker
     get_config
     create_env
-    
-    # Автоматически настраиваем прокси если Telegram недоступен
-    if ! check_telegram_access; then
-        setup_proxy_auto
-    fi
-    
     start_container
 }
 

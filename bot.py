@@ -3,7 +3,6 @@ import asyncio
 import aiohttp
 import logging
 import os
-import sys
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from collections import deque
@@ -20,20 +19,8 @@ class SOAPbuyBot:
         self.telegram_bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
         self.telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
         self.symbol = "QUAIUSDT"
-        
-        # Безопасное получение LOOKBACK_MINUTES с очисткой от скобок
-        lookback_raw = os.getenv('LOOKBACK_MINUTES', '5')
-        lookback_raw = lookback_raw.strip('[]').strip()
-        self.lookback_minutes = int(lookback_raw)
-        
-        # Безопасное получение THRESHOLD_PERCENT с очисткой от скобок
-        threshold_raw = os.getenv('THRESHOLD_PERCENT', '4.0')
-        threshold_raw = threshold_raw.strip('[]').strip()
-        self.threshold_percent = float(threshold_raw)
-        
-        # Прокси настройки
-        self.http_proxy = os.getenv('HTTP_PROXY')
-        self.https_proxy = os.getenv('HTTPS_PROXY')
+        self.lookback_minutes = int(os.getenv('LOOKBACK_MINUTES', '5'))
+        self.threshold_percent = float(os.getenv('THRESHOLD_PERCENT', '4.0'))
         
         if not self.telegram_bot_token or not self.telegram_chat_id:
             raise ValueError("TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set")
@@ -47,8 +34,6 @@ class SOAPbuyBot:
         
         logger.info(f"SOAPbuy bot initialized with symbol: {self.symbol}")
         logger.info(f"Threshold: {self.threshold_percent}% over {self.lookback_minutes} minutes")
-        if self.http_proxy:
-            logger.info(f"Using proxy: {self.http_proxy}")
         
     async def send_telegram_message(self, message: str) -> bool:
         url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
@@ -59,12 +44,8 @@ class SOAPbuyBot:
         }
         
         try:
-            connector = None
-            if self.http_proxy:
-                connector = aiohttp.TCPConnector(ssl=False)
-            
-            async with aiohttp.ClientSession(connector=connector) as session:
-                async with session.post(url, json=payload, timeout=30, proxy=self.http_proxy) as response:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as response:
                     if response.status == 200:
                         logger.info("Telegram message sent")
                         return True
@@ -204,16 +185,6 @@ Time: {change_info['current_timestamp'].strftime('%H:%M:%S')}
     
     async def run(self, interval_seconds: int = 60):
         logger.info("Starting SOAPbuy monitoring bot")
-        
-        # Проверка Telegram соединения
-        logger.info("Checking Telegram connection...")
-        test_msg = await self.send_telegram_message("SOAPbuy bot is starting...")
-        if test_msg:
-            logger.info("Telegram connection OK")
-        else:
-            logger.warning("Telegram connection FAILED - check proxy settings")
-            logger.warning("If in Russia, run: ./proxy-setup.sh")
-        
         await self.send_welcome_message()
         
         check_count = 0

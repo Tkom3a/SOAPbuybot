@@ -38,4 +38,5 @@ LOOKBACK_MINUTES=5
 
 ## Uninstall  
 
-./uninstall.sh
+chmod +x uninstall.sh  
+./uninstall.sh  
