@@ -16,8 +16,8 @@ chmod +x install.sh
 ##For Russia-based users (Telegram blocked)  
 If you don't receive Telegram messages, run the proxy setup:  
 
-chmod +x mtproxy.sh  
-./mtproxy.sh  
+chmod +x proxy-setup.sh  
+./proxy-setup.sh
 
 ## Commands  
 
