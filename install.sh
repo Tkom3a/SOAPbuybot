@@ -13,12 +13,6 @@ echo -e "${BLUE}   SOAPbuy - Automatic Installer   ${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Проверка прав
-#if [ "$EUID" -eq 0 ]; then
-#    echo -e "${RED}Do not run as root. Run as normal user with sudo privileges${NC}"
-#    exit 1
-#fi
-
 # Определение ОС
 detect_os() {
     if [ -f /etc/os-release ]; then
@@ -41,8 +35,7 @@ install_docker() {
     fi
     
     curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker $USER
+    sh get-docker.sh
     rm get-docker.sh
     
     echo -e "${GREEN}Docker installed${NC}"
@@ -57,9 +50,9 @@ install_docker_compose() {
         return
     fi
     
-    sudo mkdir -p /usr/local/lib/docker/cli-plugins
-    sudo curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
-    sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    mkdir -p /usr/local/lib/docker/cli-plugins
+    curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
     
     echo -e "${GREEN}Docker Compose installed${NC}"
 }
@@ -68,17 +61,27 @@ install_docker_compose() {
 check_dependencies() {
     echo -e "${YELLOW}Checking dependencies...${NC}"
     
-    # Update package list
-    sudo apt-get update -qq
+    # Update package list if apt is available
+    if command -v apt-get &> /dev/null; then
+        apt-get update -qq 2>/dev/null || true
+    fi
     
     # Install curl if not present
     if ! command -v curl &> /dev/null; then
-        sudo apt-get install -y curl
+        if command -v apt-get &> /dev/null; then
+            apt-get install -y curl
+        elif command -v yum &> /dev/null; then
+            yum install -y curl
+        fi
     fi
     
     # Install git if not present
     if ! command -v git &> /dev/null; then
-        sudo apt-get install -y git
+        if command -v apt-get &> /dev/null; then
+            apt-get install -y git
+        elif command -v yum &> /dev/null; then
+            yum install -y git
+        fi
     fi
     
     echo -e "${GREEN}Dependencies OK${NC}"
@@ -166,24 +169,12 @@ start_container() {
     fi
 }
 
-# Основной процесс
+# Основной процесс (без проверки на root)
 main() {
     detect_os
     check_dependencies
     install_docker
     install_docker_compose
-    
-    # Небольшая пауза для применения группы Docker
-    if ! groups | grep -q docker; then
-        echo -e "${YELLOW}Please log out and back in for Docker group changes, then run:${NC}"
-        echo "  cd $(pwd) && ./install.sh"
-        echo ""
-        echo -e "${YELLOW}Or run the next part manually:${NC}"
-        echo "  newgrp docker"
-        echo "  cd $(pwd) && ./install.sh"
-        exit 0
-    fi
-    
     get_config
     create_env
     start_container
