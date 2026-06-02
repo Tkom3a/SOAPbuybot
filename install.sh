@@ -61,12 +61,10 @@ install_docker_compose() {
 check_dependencies() {
     echo -e "${YELLOW}Checking dependencies...${NC}"
     
-    # Update package list if apt is available
     if command -v apt-get &> /dev/null; then
         apt-get update -qq 2>/dev/null || true
     fi
     
-    # Install curl if not present
     if ! command -v curl &> /dev/null; then
         if command -v apt-get &> /dev/null; then
             apt-get install -y curl
@@ -75,7 +73,6 @@ check_dependencies() {
         fi
     fi
     
-    # Install git if not present
     if ! command -v git &> /dev/null; then
         if command -v apt-get &> /dev/null; then
             apt-get install -y git
@@ -114,7 +111,6 @@ get_config() {
     read -p "Lookback time in minutes [5]: " LOOKBACK_MINUTES
     LOOKBACK_MINUTES=${LOOKBACK_MINUTES:-5}
     
-    # Validate
     if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
         echo -e "${RED}TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required${NC}"
         exit 1
@@ -141,10 +137,7 @@ start_container() {
     echo ""
     echo -e "${YELLOW}Starting Docker container...${NC}"
     
-    # Stop and remove if exists
     docker compose down 2>/dev/null || true
-    
-    # Build and start
     docker compose up -d --build
     
     sleep 3
@@ -161,7 +154,35 @@ start_container() {
         echo -e "  ${GREEN}Restart:${NC} docker compose restart"
         echo -e "  ${GREEN}Status:${NC} docker ps"
         echo ""
-        echo -e "${YELLOW}Check Telegram for welcome message${NC}"
+        
+        # Проверка доступности Telegram API
+        echo -e "${YELLOW}Checking Telegram API connection...${NC}"
+        sleep 5
+        CHECK_MSG=$(docker compose logs --tail=20 2>&1 | grep -i "telegram message sent" || echo "")
+        
+        if [ -z "$CHECK_MSG" ]; then
+            echo -e "${RED}========================================${NC}"
+            echo -e "${RED}  Telegram connection issue detected!  ${NC}"
+            echo -e "${RED}========================================${NC}"
+            echo ""
+            echo -e "${YELLOW}If you are in Russia or having connection problems:${NC}"
+            echo ""
+            echo "1. Run the proxy setup script:"
+            echo "   ./mtproxy.sh"
+            echo ""
+            echo "2. Or use a VPN to connect to Telegram"
+            echo ""
+            echo "3. After setting up proxy, restart the bot:"
+            echo "   docker compose restart"
+            echo ""
+            echo -e "${YELLOW}Proxy installation guide:${NC}"
+            echo "   https://github.com/alexbers/mtprotoproxy"
+            echo ""
+        else
+            echo -e "${GREEN}Telegram connection successful${NC}"
+        fi
+        
+        echo -e "${BLUE}========================================${NC}"
     else
         echo -e "${RED}Error starting container${NC}"
         echo -e "${YELLOW}Check logs: docker compose logs${NC}"
@@ -169,7 +190,7 @@ start_container() {
     fi
 }
 
-# Основной процесс (без проверки на root)
+# Основной процесс
 main() {
     detect_os
     check_dependencies
@@ -180,5 +201,4 @@ main() {
     start_container
 }
 
-# Запуск
 main
