@@ -28,43 +28,43 @@ detect_os() {
 # Установка Docker
 install_docker() {
     echo -e "${YELLOW}Installing Docker...${NC}"
-    
+
     if command -v docker &> /dev/null; then
         echo -e "${GREEN}Docker already installed${NC}"
         return
     fi
-    
+
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
     rm get-docker.sh
-    
+
     echo -e "${GREEN}Docker installed${NC}"
 }
 
 # Установка Docker Compose V2
 install_docker_compose() {
     echo -e "${YELLOW}Installing Docker Compose...${NC}"
-    
+
     if docker compose version &> /dev/null; then
         echo -e "${GREEN}Docker Compose already installed${NC}"
         return
     fi
-    
+
     mkdir -p /usr/local/lib/docker/cli-plugins
     curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
     chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-    
+
     echo -e "${GREEN}Docker Compose installed${NC}"
 }
 
 # Проверка и установка зависимостей
 check_dependencies() {
     echo -e "${YELLOW}Checking dependencies...${NC}"
-    
+
     if command -v apt-get &> /dev/null; then
         apt-get update -qq 2>/dev/null || true
     fi
-    
+
     if ! command -v curl &> /dev/null; then
         if command -v apt-get &> /dev/null; then
             apt-get install -y curl
@@ -72,7 +72,7 @@ check_dependencies() {
             yum install -y curl
         fi
     fi
-    
+
     if ! command -v git &> /dev/null; then
         if command -v apt-get &> /dev/null; then
             apt-get install -y git
@@ -80,7 +80,7 @@ check_dependencies() {
             yum install -y git
         fi
     fi
-    
+
     echo -e "${GREEN}Dependencies OK${NC}"
 }
 
@@ -94,7 +94,7 @@ get_config() {
     echo "   3. Copy the token"
     echo ""
     read -p "Enter TELEGRAM_BOT_TOKEN: " TELEGRAM_BOT_TOKEN
-    
+
     echo ""
     echo -e "${YELLOW}How to get TELEGRAM_CHAT_ID:${NC}"
     echo "   1. Write to @userinfobot in Telegram"
@@ -102,15 +102,15 @@ get_config() {
     echo "   3. Copy your ID (digits)"
     echo ""
     read -p "Enter TELEGRAM_CHAT_ID: " TELEGRAM_CHAT_ID
-    
+
     echo ""
     echo -e "${BLUE}Monitoring Settings${NC}"
     read -p "Threshold percent for notification [4.0]: " THRESHOLD_PERCENT
     THRESHOLD_PERCENT=${THRESHOLD_PERCENT:-4.0}
-    
+
     read -p "Lookback time in minutes [5]: " LOOKBACK_MINUTES
     LOOKBACK_MINUTES=${LOOKBACK_MINUTES:-5}
-    
+
     if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
         echo -e "${RED}TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required${NC}"
         exit 1
@@ -121,14 +121,14 @@ get_config() {
 create_env() {
     echo ""
     echo -e "${YELLOW}Creating .env file...${NC}"
-    
+
     cat > .env <<EOF
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
 TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
 THRESHOLD_PERCENT=${THRESHOLD_PERCENT}
 LOOKBACK_MINUTES=${LOOKBACK_MINUTES}
 EOF
-    
+
     echo -e "${GREEN}.env file created${NC}"
 }
 
@@ -136,12 +136,12 @@ EOF
 start_container() {
     echo ""
     echo -e "${YELLOW}Starting Docker container...${NC}"
-    
+
     docker compose down 2>/dev/null || true
     docker compose up -d --build
-    
-    sleep 3
-    
+
+    sleep 5
+
     if docker ps | grep -q soapbuy-bot; then
         echo ""
         echo -e "${GREEN}========================================${NC}"
@@ -154,13 +154,13 @@ start_container() {
         echo -e "  ${GREEN}Restart:${NC} docker compose restart"
         echo -e "  ${GREEN}Status:${NC} docker ps"
         echo ""
-        
+
         # Проверка доступности Telegram API
         echo -e "${YELLOW}Checking Telegram API connection...${NC}"
         sleep 5
-        CHECK_MSG=$(docker compose logs --tail=20 2>&1 | grep -i "telegram message sent" || echo "")
         
-        if [ -z "$CHECK_MSG" ]; then
+        # Проверяем логи на наличие ошибок подключения
+        if docker compose logs --tail=30 2>&1 | grep -qi "error\|failed\|timeout\|connection\|Cannot connect"; then
             echo -e "${RED}========================================${NC}"
             echo -e "${RED}  Telegram connection issue detected!  ${NC}"
             echo -e "${RED}========================================${NC}"
@@ -168,20 +168,24 @@ start_container() {
             echo -e "${YELLOW}If you are in Russia or having connection problems:${NC}"
             echo ""
             echo "1. Run the proxy setup script:"
-            echo "   ./mtproxy.sh"
+            echo "   ./proxy-setup.sh"
             echo ""
-            echo "2. Or use a VPN to connect to Telegram"
+            echo "2. Choose option 1 (Quick fix - use public proxy)"
             echo ""
-            echo "3. After setting up proxy, restart the bot:"
+            echo "3. After proxy is configured, restart the bot:"
             echo "   docker compose restart"
             echo ""
-            echo -e "${YELLOW}Proxy installation guide:${NC}"
-            echo "   https://github.com/alexbers/mtprotoproxy"
+            echo -e "${YELLOW}Or manually add proxy to .env:${NC}"
+            echo "   echo 'HTTP_PROXY=socks5://91.230.238.128:443' >> .env"
+            echo "   echo 'HTTPS_PROXY=socks5://91.230.238.128:443' >> .env"
+            echo "   docker compose restart"
             echo ""
         else
             echo -e "${GREEN}Telegram connection successful${NC}"
+            echo -e "${GREEN}Check your Telegram for welcome message${NC}"
         fi
-        
+
+        echo ""
         echo -e "${BLUE}========================================${NC}"
     else
         echo -e "${RED}Error starting container${NC}"
