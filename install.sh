@@ -14,10 +14,10 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Проверка прав
-if [ "$EUID" -eq 0 ]; then
-    echo -e "${RED}Do not run as root. Run as normal user with sudo privileges${NC}"
-    exit 1
-fi
+#if [ "$EUID" -eq 0 ]; then
+#    echo -e "${RED}Do not run as root. Run as normal user with sudo privileges${NC}"
+#    exit 1
+#fi
 
 # Определение ОС
 detect_os() {
