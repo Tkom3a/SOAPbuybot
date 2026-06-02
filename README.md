@@ -32,6 +32,4 @@ LOOKBACK_MINUTES=5
 
 ## Uninstall  
 
-docker-compose down -v  
-docker rmi soapbuy_soapbuy-bot  
-cd .. && rm -rf soapbuy  
+./uninstall.sh

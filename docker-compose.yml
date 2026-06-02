@@ -9,6 +9,7 @@ services:
       - .env
     environment:
       - TZ=UTC
+      - PYTHONUNBUFFERED=1
     logging:
       driver: "json-file"
       options:
