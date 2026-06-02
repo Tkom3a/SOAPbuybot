@@ -13,6 +13,11 @@ cd SOAPbuybot
 chmod +x install.sh    
 ./install.sh    
 
+##For Russia-based users (Telegram blocked)  
+If you don't receive Telegram messages, run the proxy setup:  
+
+./mtproxy.sh  
+
 ## Commands  
 
 docker-compose logs -f      # View logs  
